@@ -1,0 +1,15 @@
+{
+  "name": "vendor_name/hosenabe-backend",
+  "description": "description",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "stui",
+      "email": "me@stui.ch"
+    }
+  ],
+  "require": {
+    "cboden/ratchet": "^0.4"
+  }
+}
