@@ -2,17 +2,33 @@
 
 namespace HoseAbe;
 
+use Exception;
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
 use SplObjectStorage;
 
 class HoseAbe implements MessageComponentInterface
 {
-    protected array $clients = [];
-    protected array $lobbies = [];
+    protected static ?HoseAbe $instance = null;
+    public array $clients = [];
+    public array $lobbies = [];
+    public array $userLobbies = [];
 
-    public function __construct()
+    protected function __construct()
     {
+    }
+
+    protected function __clone()
+    {
+    }
+
+    public static function getInstance(): HoseAbe
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
     }
 
     public function onOpen(ConnectionInterface $conn)
@@ -39,5 +55,16 @@ class HoseAbe implements MessageComponentInterface
     function onError(ConnectionInterface $conn, \Exception $e)
     {
         // TODO: Implement onError() method.
+    }
+
+
+
+
+    public function addLobby(Lobby $lobby)
+    {
+        while (isset($this->lobbies[$lobby->uuid])) {
+            $lobby->regenerateNewUuid();
+        }
+        $this->lobbies[$lobby->uuid] = $lobby;
     }
 }

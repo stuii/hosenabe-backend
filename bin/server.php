@@ -10,7 +10,7 @@ require '../vendor/autoload.php';
 $server = IoServer::factory(
     new HttpServer(
         new WsServer(
-            new HoseAbe()
+            HoseAbe::getInstance()
         )
     ),
     8080
