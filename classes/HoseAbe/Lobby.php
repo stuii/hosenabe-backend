@@ -5,6 +5,7 @@ namespace HoseAbe;
 use HoseAbe\Enums\MemberRole;
 use Ramsey\Uuid\Uuid;
 use Ratchet\ConnectionInterface;
+use stdClass;
 
 class Lobby
 {
@@ -19,7 +20,7 @@ class Lobby
         $this->uuid = Uuid::uuid4();
     }
 
-    public function hydrateFromMessage(\stdClass $data, Player $owner): void
+    public function hydrateFromMessage(stdClass $data, Player $owner): void
     {
         $this->name = $data->name;
         $this->password = $data->password;
@@ -27,7 +28,7 @@ class Lobby
         $this->members[] = new LobbyMember($owner, MemberRole::OWNER);
     }
 
-    public static function handleMessage(ConnectionInterface $connection, \stdClass $message)
+    public static function handleMessage(ConnectionInterface $connection, stdClass $message): void
     {
         switch ($message->action) {
             case 'create':
@@ -53,12 +54,12 @@ class Lobby
         }
     }
 
-    public function regenerateNewUuid()
+    public function regenerateNewUuid(): void
     {
         $this->uuid = Uuid::uuid4();
     }
 
-    public function addMember()
+    public function addMember(): void
     {
         $hoseAbe = HoseAbe::getInstance();
         // todo
