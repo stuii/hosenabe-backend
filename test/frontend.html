@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<script>
+    const exampleSocket = new WebSocket("ws://127.0.0.1:8080/");
+    exampleSocket.onmessage = (event) => {
+        console.log(event.data);
+    }
+    setTimeout(function(){
+        exampleSocket.send(JSON.stringify({
+            'ns': 'lob',
+            'action': 'create',
+            'data': {
+                'name': 'Test',
+                'password': null,
+                'members': 8
+            }
+        }));
+        },100);
+</script>
+</body>
+</html>

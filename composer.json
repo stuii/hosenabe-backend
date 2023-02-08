@@ -9,7 +9,13 @@
       "email": "me@stui.ch"
     }
   ],
+  "autoload": {
+    "psr-4": {
+      "HoseAbe\\": "classes/HoseAbe/"
+    }
+  },
   "require": {
+    "ramsey/uuid": "^4.5",
     "cboden/ratchet": "^0.4"
   }
 }
