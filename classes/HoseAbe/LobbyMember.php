@@ -10,8 +10,8 @@ class LobbyMember
     private DateTime $joinTime;
 
     public function __construct(
-        private Player $player,
-        private MemberRole $role = MemberRole::MEMBER
+        public Player $player,
+        public MemberRole $role = MemberRole::MEMBER
     ) {
         $this->joinTime = new DateTime();
     }

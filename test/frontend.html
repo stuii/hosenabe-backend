@@ -7,7 +7,7 @@
 <body>
 
 <script>
-    const exampleSocket = new WebSocket("ws://127.0.0.1:8080/");
+    const exampleSocket = new WebSocket("ws://127.0.0.1:33363/");
     exampleSocket.onmessage = (event) => {
         console.log(event.data);
     }
@@ -22,6 +22,19 @@
             }
         }));
         },100);
+
+    function send(){
+        let val = document.querySelector('#command').value;
+        exampleSocket.send(val);
+    }
+
+    function join() {
+        exampleSocket.send('{"ns":"lob","action":"join","data": {"invite":"'+document.querySelector('#command').value+'"}}');
+    }
 </script>
+
+<input id="command" type="text" />
+<button id="send" onclick="send()">send</button>
+<button id="join" onclick="join()">Join Lobby</button>
 </body>
 </html>

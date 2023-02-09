@@ -2,6 +2,7 @@
 
 namespace HoseAbe;
 
+use HoseAbe\Debug\Logger;
 use HoseAbe\Resources\RandomString;
 use Ramsey\Uuid\Uuid;
 use Ratchet\ConnectionInterface;
@@ -50,9 +51,28 @@ class Player
 
     public function joinLobby(Lobby $lobby)
     {
-        //todo: leave current lobby
-
-        $this->currentLobby = $lobby->uuid;
+        $this->leaveLobby();
+        $this->setLobby($lobby);
         $lobby->addMember($this);
+        $lobby->lobbyMessage('Player joined', $this);
+        Logger::log('PLAYER', 'Player joined lobby.');
+    }
+
+    public function leaveLobby(): void
+    {
+        Logger::log('PLAYER', 'Player is leaving lobby.');
+        if (is_null($this->currentLobby)) { return; }
+
+        $lobby = Lobby::find($this->currentLobby);
+        $lobby->removeMember($this);
+        $this->currentLobby = null;
+    }
+
+    public function setLobby(Lobby $lobby)
+    {
+        $this->currentLobby = $lobby->uuid;
+
+        $hoseAbe = HoseAbe::getInstance();
+        $hoseAbe->userLobbies[$this->connection->resourceId] = $lobby->uuid;
     }
 }

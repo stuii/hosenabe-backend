@@ -2,16 +2,32 @@
 
 namespace HoseAbe;
 
-use Exception;
+use HoseAbe\Debug\Logger;
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
-use SplObjectStorage;
 
 class HoseAbe implements MessageComponentInterface
 {
     protected static ?HoseAbe $instance = null;
+
+    /** @var array<int, Player> $clients
+     * resourceId => player-object
+     */
     public array $clients = [];
+
+    /** @var array<string, Lobby> $lobbies
+     * lobby-uuid => lobby-obj
+     */
     public array $lobbies = [];
+
+    /** @var array<string, string> $inviteCodes
+     * invitecode => lobby-uuid
+     */
+    public array $inviteCodes = [];
+
+    /** @var array<> $userLobbies
+     * resourceId => lobby-uuid
+     */
     public array $userLobbies = [];
 
     protected function __construct()
@@ -33,38 +49,45 @@ class HoseAbe implements MessageComponentInterface
 
     public function onOpen(ConnectionInterface $conn)
     {
-        echo "New connection ({$conn->resourceId})\n";
+        Logger::log('CONNECT', 'New Connection with ID >' . $conn->resourceId . '<');
         $player = new Player($conn);
         $this->clients[$conn->resourceId] = $player;
 
+        Logger::log('CONNECT', 'Sending Welcome message to ID >' . $conn->resourceId . '<');
         $player->sendWelcomeMessage();
-        echo "Welcome message sent to {$conn->resourceId}\n";
+        Logger::log('CONNECT', 'Welcome message sent to ID >' . $conn->resourceId . '<');
     }
 
-    function onMessage(ConnectionInterface $from, $msg)
+    public function onMessage(ConnectionInterface $from, $msg)
     {
-        echo "Message received...\n";
+        Logger::log('MESSAGE', 'Received message from ID >' . $from->resourceId . '<');
         MessageHandler::handle($from, $msg);
     }
 
-    function onClose(ConnectionInterface $conn)
+    public function onClose(ConnectionInterface $conn)
     {
+        Logger::log('CLOSE', 'Client with ID >' . $conn->resourceId . '< disconnected');
+        $player = $this->clients[$conn->resourceId];
+        unset($this->clients[$conn->resourceId]);
+        unset($this->clients[$conn->resourceId]);
         // TODO: Implement onClose() method.
     }
 
-    function onError(ConnectionInterface $conn, \Exception $e)
+    public function onError(ConnectionInterface $conn, \Exception $e)
     {
         // TODO: Implement onError() method.
     }
 
-
-
-
-    public function addLobby(Lobby $lobby)
+    public function addLobby(Lobby &$lobby)
     {
+        Logger::log('LOBBY', 'Adding Lobby ('.$lobby->name.') to storage');
         while (isset($this->lobbies[$lobby->uuid])) {
             $lobby->regenerateNewUuid();
         }
+        while (isset($this->inviteCodes[$lobby->inviteCode])) {
+            $lobby->regenerateNewInviteCode();
+        }
         $this->lobbies[$lobby->uuid] = $lobby;
+        $this->inviteCodes[$lobby->inviteCode] = $lobby->uuid;
     }
 }
