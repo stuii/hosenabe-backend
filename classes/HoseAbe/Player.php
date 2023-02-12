@@ -2,70 +2,131 @@
 
 namespace HoseAbe;
 
+use Exception;
 use HoseAbe\Debug\Logger;
-use HoseAbe\Resources\RandomString;
-use Ramsey\Uuid\Uuid;
+use HoseAbe\Enums\Context;
+use HoseAbe\Messages\Error;
+use HoseAbe\Messages\Message;
 use Ratchet\ConnectionInterface;
+use stdClass;
 
 class Player
 {
     public ?string $username = null;
-    public string $uuid;
-    public string $secret;
-
     public ?string $currentLobby = null;
 
     public function __construct(
         public ConnectionInterface $connection
     )
     {
-        $this->uuid = Uuid::uuid4()->toString();
-        $this->secret = RandomString::generate();
+    }
+    public static function handleMessage(ConnectionInterface $connection, stdClass $message): void
+    {
+        Logger::log('PLAYER', 'Handling player message');
+        switch ($message->action) {
+            case 'login':
+                $username = $message->data->username;
+                $hoseAbe = HoseAbe::getInstance();
+                if (isset($hoseAbe->usernames[$username])) {
+                    Error::send($connection, 403, 'Username already exists');
+                    return;
+                }
+
+                $player = Player::find($connection);
+                $player->username = $username;
+                $hoseAbe->usernames[$username] = $username;
+                Message::send($connection, Context::PLAYER, 'Username set', $player->render());
+                break;
+            default:
+                Error::send($connection, 404, 'Action does not exist');
+                break;
+        }
     }
 
-    public static function find($resourceId): Player
+    /**
+     * @throws Exception
+     */
+    public static function find(ConnectionInterface $connection): Player
     {
+        $resourceId = $connection->resourceId;
         $hoseAbe = HoseAbe::getInstance();
+        if (!isset($hoseAbe->clients[$resourceId])) {
+            throw new Exception('Player not found', 404);
+        }
         return $hoseAbe->clients[$resourceId];
     }
 
-    public static function findLobby($resourceId): Lobby
+    /**
+     * @throws Exception
+     */
+    public static function findLobby(ConnectionInterface $connection): ?Lobby
     {
+        $resourceId = $connection->resourceId;
         $hoseAbe = HoseAbe::getInstance();
+        if (!isset($hoseAbe->userLobbies[$resourceId])) {
+            return null;
+        }
+
         $lobbyId = $hoseAbe->userLobbies[$resourceId];
+        if (!isset($hoseAbe->lobbies[$lobbyId])) {
+            throw new Exception('Lobby not found', 404);
+        }
+
         return $hoseAbe->lobbies[$lobbyId];
     }
 
     public function sendWelcomeMessage(): void
     {
-        $this->connection->send(json_encode($this->getPlayerBoot()));
+        Message::send($this->connection, Context::PLAYER, 'Welcome', []);
     }
 
-    private function getPlayerBoot(): array
+    /**
+     * @throws Exception
+     */
+    public function joinLobby(Lobby $lobby): LobbyMember
     {
-        return [
-            'uuid' => $this->uuid,
-            'secret' => $this->secret
-        ];
-    }
+        if (is_null($this->username)) {
+            throw new Exception('Cannot join lobby without username', 403);
+        }
+        if ($lobby->uuid === $this->currentLobby) {
+            throw new Exception('User is already in party', 400);
+        }
 
-    public function joinLobby(Lobby $lobby)
-    {
-        $this->leaveLobby();
+        if (!is_null($this->currentLobby)) {
+            $this->leaveLobby();
+        }
         $this->setLobby($lobby);
-        $lobby->addMember($this);
-        $lobby->lobbyMessage('Player joined', $this);
+        $lobbyMember = $lobby->addMember($this);
         Logger::log('PLAYER', 'Player joined lobby.');
+
+        return $lobbyMember;
     }
 
+    /**
+     * @throws Exception
+     */
     public function leaveLobby(): void
     {
         Logger::log('PLAYER', 'Player is leaving lobby.');
-        if (is_null($this->currentLobby)) { return; }
+        if (is_null($this->currentLobby)) {
+            throw new Exception('Player has no lobby', 404);
+        }
 
         $lobby = Lobby::find($this->currentLobby);
         $lobby->removeMember($this);
         $this->currentLobby = null;
+    }
+
+    public function disconnect(): void
+    {
+        $this->leaveLobby();
+        $hoseAbe = HoseAbe::getInstance();
+        if (isset($hoseAbe->clients[$this->getResourceId()])) {
+            unset($hoseAbe->clients[$this->getResourceId()]);
+        }
+        if(isset($hoseAbe->usernames[$this->username])) {
+            unset($hoseAbe->usernames[$this->username]);
+        }
     }
 
     public function setLobby(Lobby $lobby)
@@ -73,6 +134,18 @@ class Player
         $this->currentLobby = $lobby->uuid;
 
         $hoseAbe = HoseAbe::getInstance();
-        $hoseAbe->userLobbies[$this->connection->resourceId] = $lobby->uuid;
+        $hoseAbe->userLobbies[$this->getResourceId()] = $lobby->uuid;
+    }
+
+    public function render(): array
+    {
+        return [
+            'username' => $this->username
+        ];
+    }
+
+    public function getResourceId()
+    {
+        return $this->connection->resourceId;
     }
 }

@@ -2,16 +2,24 @@
 
 namespace HoseAbe\Messages;
 
+use HoseAbe\Enums\Context;
 use Ratchet\ConnectionInterface;
 
-class Message implements MessageInterface
+class Message
 {
-    public static function send(ConnectionInterface $connection, array $data): void
+    public static function send(
+        ConnectionInterface $connection,
+        Context $context,
+        ?string $message = null,
+        array $data
+    ): void
     {
         $connection->send(
-            json_encode(
-                $data
-            )
+            json_encode([
+                'cx' => $context,
+                'message' => $message,
+                'data' => $data
+            ])
         );
     }
 }

@@ -2,8 +2,8 @@
 
 namespace HoseAbe\Enums;
 
-enum MemberRole
+enum MemberRole: string
 {
-    case MEMBER;
-    case OWNER;
+    case MEMBER = 'MEMBER';
+    case OWNER = 'OWNER';
 }

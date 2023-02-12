@@ -9,32 +9,61 @@
 <script>
     const exampleSocket = new WebSocket("ws://127.0.0.1:33363/");
     exampleSocket.onmessage = (event) => {
-        console.log(event.data);
+        //console.log(event.data);
+        let message = JSON.parse(event.data);
+        console.log(message);
+
+        document.querySelector('#messages').value += event.data + "\n";
+
+        if (message.cx === 'lob') {
+            document.querySelector('#lobbyMembers').innerHTML = '';
+            console.log(message.data);
+            message.data.lobby.members.forEach(
+                function (val) {
+                    document.querySelector('#lobbyMembers').innerHTML += val.username +
+                        (val.role === 'OWNER' ? ' <img src="crown.svg" width="16" height="16" alt="owner"/>' : '') +
+                        '<br />';
+                }
+            );
+        }
     }
-    setTimeout(function(){
+    function createLobby(){
         exampleSocket.send(JSON.stringify({
-            'ns': 'lob',
+            'cx': 'lob',
             'action': 'create',
             'data': {
-                'name': 'Test',
+                'name': document.querySelector('#command').value,
                 'password': null,
                 'members': 8
             }
         }));
-        },100);
+    }
+    function leave(){
+        exampleSocket.send(JSON.stringify({
+            'cx': 'lob',
+            'action': 'leave',
+        }));
+    }
 
     function send(){
         let val = document.querySelector('#command').value;
         exampleSocket.send(val);
     }
 
+    function login() {
+        exampleSocket.send('{"cx":"ply","action":"login","data": {"username":"'+document.querySelector('#command').value+'"}}');
+    }
     function join() {
-        exampleSocket.send('{"ns":"lob","action":"join","data": {"invite":"'+document.querySelector('#command').value+'"}}');
+        exampleSocket.send('{"cx":"lob","action":"join","data": {"invite":"'+document.querySelector('#command').value+'"}}');
     }
 </script>
-
 <input id="command" type="text" />
 <button id="send" onclick="send()">send</button>
+<button id="create" onclick="createLobby()">Create Lobby</button>
 <button id="join" onclick="join()">Join Lobby</button>
+<button id="leave" onclick="leave()">Leave Lobby</button>
+<button id="username" onclick="login()">login</button>
+<div id="lobbyMembers"></div>
+<textarea id="messages" style="width: 100%; height: 500px;"></textarea>
 </body>
 </html>

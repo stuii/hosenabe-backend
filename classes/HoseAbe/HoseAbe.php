@@ -2,7 +2,9 @@
 
 namespace HoseAbe;
 
+use Exception;
 use HoseAbe\Debug\Logger;
+use HoseAbe\Messages\Error;
 use Ratchet\ConnectionInterface;
 use Ratchet\MessageComponentInterface;
 
@@ -30,6 +32,8 @@ class HoseAbe implements MessageComponentInterface
      */
     public array $userLobbies = [];
 
+    public array $usernames = [];
+
     protected function __construct()
     {
     }
@@ -49,13 +53,14 @@ class HoseAbe implements MessageComponentInterface
 
     public function onOpen(ConnectionInterface $conn)
     {
-        Logger::log('CONNECT', 'New Connection with ID >' . $conn->resourceId . '<');
+        $resourceId = $conn->resourceId;
+        Logger::log('CONNECT', 'New Connection with ID >' . $resourceId . '<');
         $player = new Player($conn);
-        $this->clients[$conn->resourceId] = $player;
+        $this->clients[$resourceId] = $player;
 
-        Logger::log('CONNECT', 'Sending Welcome message to ID >' . $conn->resourceId . '<');
+        Logger::log('CONNECT', 'Sending Welcome message to ID >' . $resourceId . '<');
         $player->sendWelcomeMessage();
-        Logger::log('CONNECT', 'Welcome message sent to ID >' . $conn->resourceId . '<');
+        Logger::log('CONNECT', 'Welcome message sent to ID >' . $resourceId . '<');
     }
 
     public function onMessage(ConnectionInterface $from, $msg)
@@ -67,26 +72,29 @@ class HoseAbe implements MessageComponentInterface
     public function onClose(ConnectionInterface $conn)
     {
         Logger::log('CLOSE', 'Client with ID >' . $conn->resourceId . '< disconnected');
-        $player = $this->clients[$conn->resourceId];
-        unset($this->clients[$conn->resourceId]);
-        unset($this->clients[$conn->resourceId]);
-        // TODO: Implement onClose() method.
+
+        try {
+            $lobby = Player::findLobby($conn);
+            $player = Player::find($conn);
+        } catch(Exception $e) {
+            Error::send($conn, $e->getCode(), $e->getMessage());
+            return;
+        }
+        $player->disconnect();
+
+        if (!is_null($lobby)) {
+            $lobby->sendLobbyUpdate('Player disconnected');
+        }
     }
 
-    public function onError(ConnectionInterface $conn, \Exception $e)
+    public function onError(ConnectionInterface $conn, Exception $e)
     {
         // TODO: Implement onError() method.
     }
 
-    public function addLobby(Lobby &$lobby)
+    public function addLobby(Lobby $lobby)
     {
         Logger::log('LOBBY', 'Adding Lobby ('.$lobby->name.') to storage');
-        while (isset($this->lobbies[$lobby->uuid])) {
-            $lobby->regenerateNewUuid();
-        }
-        while (isset($this->inviteCodes[$lobby->inviteCode])) {
-            $lobby->regenerateNewInviteCode();
-        }
         $this->lobbies[$lobby->uuid] = $lobby;
         $this->inviteCodes[$lobby->inviteCode] = $lobby->uuid;
     }

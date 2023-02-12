@@ -4,6 +4,7 @@ namespace HoseAbe;
 
 use DateTime;
 use HoseAbe\Enums\MemberRole;
+use JetBrains\PhpStorm\ArrayShape;
 
 class LobbyMember
 {
@@ -14,5 +15,14 @@ class LobbyMember
         public MemberRole $role = MemberRole::MEMBER
     ) {
         $this->joinTime = new DateTime();
+    }
+
+    #[ArrayShape(['username' => "null|string", 'uuid' => "string", 'role' => "\HoseAbe\Enums\MemberRole"])]
+    public function render(): array
+    {
+        return [
+            'username' => $this->player->username,
+            'role' => $this->role
+        ];
     }
 }

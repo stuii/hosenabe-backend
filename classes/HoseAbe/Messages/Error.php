@@ -4,13 +4,18 @@ namespace HoseAbe\Messages;
 
 use Ratchet\ConnectionInterface;
 
-class Error implements MessageInterface
+class Error
 {
-    public static function send(ConnectionInterface $connection, array $data): void
+    public static function send(ConnectionInterface $connection, int $code, string $message): void
     {
         $connection->send(
             json_encode(
-                ['error' => $data]
+                [
+                    'error' => [
+                        'message' => $message,
+                        'code' => $code,
+                    ]
+                ]
             )
         );
     }

@@ -7,13 +7,15 @@ use Ratchet\WebSocket\WsServer;
 
 require '../vendor/autoload.php';
 
+$wsServer = new WsServer(HoseAbe::getInstance());
+
 $server = IoServer::factory(
     new HttpServer(
-        new WsServer(
-            HoseAbe::getInstance()
-        )
+        $wsServer
     ),
     33363
 );
+
+$wsServer->enableKeepAlive($server->loop, 30);
 
 $server->run();
