@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection ALL */
 
 namespace HoseAbe;
 
@@ -76,11 +76,11 @@ class HoseAbe implements MessageComponentInterface
         try {
             $lobby = Player::findLobby($conn);
             $player = Player::find($conn);
+            $player->disconnect();
         } catch(Exception $e) {
             Error::send($conn, $e->getCode(), $e->getMessage());
             return;
         }
-        $player->disconnect();
 
         if (!is_null($lobby)) {
             $lobby->sendLobbyUpdate('Player disconnected');

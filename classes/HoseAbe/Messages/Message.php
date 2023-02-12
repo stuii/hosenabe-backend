@@ -11,7 +11,7 @@ class Message
         ConnectionInterface $connection,
         Context $context,
         ?string $message = null,
-        array $data
+        array $data = []
     ): void
     {
         $connection->send(

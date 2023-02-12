@@ -9,7 +9,7 @@ use Ratchet\ConnectionInterface;
 class MessageHandler
 {
 
-    public static function handle(ConnectionInterface $connection, string $message)
+    public static function handle(ConnectionInterface $connection, string $message): void
     {
         // todo: check message schema
         $message = json_decode($message);

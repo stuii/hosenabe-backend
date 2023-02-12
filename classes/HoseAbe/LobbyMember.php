@@ -17,7 +17,7 @@ class LobbyMember
         $this->joinTime = new DateTime();
     }
 
-    #[ArrayShape(['username' => "null|string", 'uuid' => "string", 'role' => "\HoseAbe\Enums\MemberRole"])]
+    #[ArrayShape(['username' => "null|string", 'role' => "\HoseAbe\Enums\MemberRole"])]
     public function render(): array
     {
         return [

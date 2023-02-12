@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection PhpUndefinedFieldInspection */
 
 namespace HoseAbe;
 
@@ -7,6 +7,7 @@ use HoseAbe\Debug\Logger;
 use HoseAbe\Enums\Context;
 use HoseAbe\Messages\Error;
 use HoseAbe\Messages\Message;
+use JetBrains\PhpStorm\ArrayShape;
 use Ratchet\ConnectionInterface;
 use stdClass;
 
@@ -32,7 +33,12 @@ class Player
                     return;
                 }
 
-                $player = Player::find($connection);
+                try {
+                    $player = Player::find($connection);
+                } catch (Exception $e) {
+                    Error::send($connection, $e->getCode(), $e->getMessage());
+                    return;
+                }
                 $player->username = $username;
                 $hoseAbe->usernames[$username] = $username;
                 Message::send($connection, Context::PLAYER, 'Username set', $player->render());
@@ -117,6 +123,9 @@ class Player
         $this->currentLobby = null;
     }
 
+    /**
+     * @throws Exception
+     */
     public function disconnect(): void
     {
         $this->leaveLobby();
@@ -129,7 +138,7 @@ class Player
         }
     }
 
-    public function setLobby(Lobby $lobby)
+    public function setLobby(Lobby $lobby): void
     {
         $this->currentLobby = $lobby->uuid;
 
@@ -137,6 +146,7 @@ class Player
         $hoseAbe->userLobbies[$this->getResourceId()] = $lobby->uuid;
     }
 
+    #[ArrayShape(['username' => "null|string"])]
     public function render(): array
     {
         return [

@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection ALL */
 
 namespace HoseAbe;
 
@@ -9,6 +9,7 @@ use HoseAbe\Enums\LobbyStatus;
 use HoseAbe\Enums\MemberRole;
 use HoseAbe\Messages\Error;
 use HoseAbe\Messages\Message;
+use JetBrains\PhpStorm\ArrayShape;
 use Ramsey\Uuid\Uuid;
 use Ratchet\ConnectionInterface;
 use stdClass;
@@ -73,10 +74,8 @@ class Lobby
                 break;
             case 'join':
                 Logger::log('LOBBY', 'Player with ID >'.$resourceId.'< wants to join lobby by invite code ('.$message->data->invite.')');
-                $player = Player::find($connection);
-
-
                 try {
+                    $player = Player::find($connection);
                     $lobby = Lobby::findByInviteCode($message->data->invite);
                     $lobbyMember = $player->joinLobby($lobby);
                 } catch(Exception $e){
@@ -90,8 +89,8 @@ class Lobby
                 break;
             case 'leave':
                 Logger::log('LOBBY', 'Player with ID >'.$resourceId.'< left lobby');
-                $player = Player::find($connection);
                 try {
+                    $player = Player::find($connection);
                     $player->leaveLobby();
                 } catch (Exception $e){
                     Error::send($connection, $e->getCode(), $e->getMessage());
@@ -190,6 +189,7 @@ class Lobby
         }
     }
 
+    #[ArrayShape(['uuid' => "null|string", 'name' => "string", 'inviteCode' => "string", 'members' => "array"])]
     public function render(): array
     {
         return [

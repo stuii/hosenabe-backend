@@ -16,6 +16,6 @@ $server = IoServer::factory(
     33363
 );
 
-$wsServer->enableKeepAlive($server->loop, 30);
+$wsServer->enableKeepAlive($server->loop, 15);
 
 $server->run();
