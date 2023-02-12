@@ -139,7 +139,6 @@ class Lobby
             Logger::log('LOBBY', 'Lobby empty, removing lobby.');
             $this->removeLobby();
         } else {
-            $this->members = array_values($this->members);
             $lobby->promoteNewOwner();
             $this->sendLobbyUpdate('Player disconnected');
         }
@@ -148,7 +147,8 @@ class Lobby
 
     private function promoteNewOwner(): void
     {
-        $this->members[0]->role = MemberRole::OWNER;
+        $newOwner = array_keys($this->members)[0];
+        $this->members[$newOwner]->role = MemberRole::OWNER;
     }
 
     public static function find($lobbyId): ?Lobby
