@@ -1,6 +1,6 @@
 <?php /** @noinspection ALL */
 
-namespace HoseAbe;
+namespace HoseAbe\Connection;
 
 use Exception;
 use HoseAbe\Debug\Logger;
@@ -11,28 +11,6 @@ use Ratchet\MessageComponentInterface;
 class HoseAbe implements MessageComponentInterface
 {
     protected static ?HoseAbe $instance = null;
-
-    /** @var array<int, Player> $clients
-     * resourceId => player-object
-     */
-    public array $clients = [];
-
-    /** @var array<string, Lobby> $lobbies
-     * lobby-uuid => lobby-obj
-     */
-    public array $lobbies = [];
-
-    /** @var array<string, string> $inviteCodes
-     * invitecode => lobby-uuid
-     */
-    public array $inviteCodes = [];
-
-    /** @var array<> $userLobbies
-     * resourceId => lobby-uuid
-     */
-    public array $userLobbies = [];
-
-    public array $usernames = [];
 
     protected function __construct()
     {
@@ -53,29 +31,26 @@ class HoseAbe implements MessageComponentInterface
 
     public function onOpen(ConnectionInterface $conn)
     {
-        $resourceId = $conn->resourceId;
-        Logger::log('CONNECT', 'New Connection with ID >' . $resourceId . '<');
+        Logger::log('CONNECT', 'New Connection');
         $player = new Player($conn);
-        $this->clients[$resourceId] = $player;
-
-        Logger::log('CONNECT', 'Sending Welcome message to ID >' . $resourceId . '<');
+        ConnectionHandler::addPlayer($player);
         $player->sendWelcomeMessage();
-        Logger::log('CONNECT', 'Welcome message sent to ID >' . $resourceId . '<');
+        Logger::log('CONNECT', 'Welcome message sent');
     }
 
     public function onMessage(ConnectionInterface $from, $msg)
     {
-        Logger::log('MESSAGE', 'Received message from ID >' . $from->resourceId . '<');
+        Logger::log('MESSAGE', 'Received message');
         MessageHandler::handle($from, $msg);
     }
 
     public function onClose(ConnectionInterface $conn)
     {
-        Logger::log('CLOSE', 'Client with ID >' . $conn->resourceId . '< disconnected');
+        Logger::log('CLOSE', 'Client disconnected');
 
         try {
-            $lobby = Player::findLobby($conn);
-            $player = Player::find($conn);
+            $player = ConnectionHandler::getPlayer($conn);
+            $lobby = ConnectionHandler::getPlayerLobby($player);
             $player->disconnect();
         } catch(Exception $e) {
             Error::send($conn, $e->getCode(), $e->getMessage());

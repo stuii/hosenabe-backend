@@ -1,6 +1,6 @@
-<?php /** @noinspection ALL */
+<?php
 
-namespace HoseAbe;
+namespace HoseAbe\Connection;
 
 use Exception;
 use HoseAbe\Debug\Logger;
@@ -28,6 +28,7 @@ class Lobby
 
     public LobbyStatus $status;
 
+    /** @noinspection PhpUnused */
     public function __construct()
     {
         $this->regenerateNewUuid();
@@ -44,14 +45,12 @@ class Lobby
             throw new Exception('Cannot create lobby without username', 403);
         }
         $this->name = $data->name;
-        //$this->password = $data->password;
         $this->maxMembers = $data->members;
         $this->addMember($owner, MemberRole::OWNER);
     }
 
     public static function handleMessage(ConnectionInterface $connection, stdClass $message): void
     {
-        $resourceId = $connection->resourceId;
         Logger::log('LOBBY', 'Handling lobby message');
         switch ($message->action) {
             case 'create':
@@ -60,23 +59,22 @@ class Lobby
                 try {
                     $lobby->hydrateFromMessage(
                         $message->data,
-                        Player::find($connection)
+                        ConnectionHandler::getPlayer($connection)
                     );
                 } catch(Exception $e) {
                     Error::send($connection, $e->getCode(), $e->getMessage());
                     return;
                 }
-                $hoseAbe = HoseAbe::getInstance();
-                $hoseAbe->addLobby($lobby);
+                ConnectionHandler::addLobby($lobby);
 
                 Message::send($connection, Context::LOBBY, 'Successfully created Lobby', ['lobby' => $lobby->render()]);
                 //todo: return lobby data
                 break;
             case 'join':
-                Logger::log('LOBBY', 'Player with ID >'.$resourceId.'< wants to join lobby by invite code ('.$message->data->invite.')');
+                Logger::log('LOBBY', 'Player wants to join lobby by invite code ('.$message->data->invite.')');
                 try {
-                    $player = Player::find($connection);
-                    $lobby = Lobby::findByInviteCode($message->data->invite);
+                    $player = ConnectionHandler::getPlayer($connection);
+                    $lobby = ConnectionHandler::getLobbyByCode($message->data->invite);
                     $lobbyMember = $player->joinLobby($lobby);
                 } catch(Exception $e){
                     Error::send($connection, $e->getCode(), $e->getMessage());
@@ -88,9 +86,9 @@ class Lobby
                 Message::send($connection, Context::LOBBY, 'Successfully created Lobby', ['lobby' => $lobby->render()]);
                 break;
             case 'leave':
-                Logger::log('LOBBY', 'Player with ID >'.$resourceId.'< left lobby');
+                Logger::log('LOBBY', 'Player left lobby');
                 try {
-                    $player = Player::find($connection);
+                    $player = ConnectionHandler::getPlayer($connection);
                     $player->leaveLobby();
                 } catch (Exception $e){
                     Error::send($connection, $e->getCode(), $e->getMessage());
@@ -104,8 +102,7 @@ class Lobby
 
     public function regenerateNewUuid(): void
     {
-        $hoseAbe = HoseAbe::getInstance();
-        while(is_null($this->uuid) || isset($hoseAbe->lobbies[$this->uuid])) {
+        while(is_null($this->uuid) || ConnectionHandler::checkLobbyUuidIsTaken($this->uuid)) {
             $this->uuid = Uuid::uuid4();
         }
     }
@@ -113,8 +110,7 @@ class Lobby
     public function addMember(Player $player, MemberRole $role = MemberRole::MEMBER): LobbyMember
     {
         $resourceId = $player->getResourceId();
-        $hoseAbe = HoseAbe::getInstance();
-        $hoseAbe->userLobbies[$resourceId] = $this->uuid;
+        ConnectionHandler::setPlayerLobby($player, $this);
         $lobbyMember = new LobbyMember($player, $role);
         $this->members[$resourceId] = $lobbyMember;
         $player->currentLobby = $this->uuid;
@@ -122,66 +118,40 @@ class Lobby
         return $lobbyMember;
     }
 
+    /**
+     * @throws Exception
+     */
     public function removeMember(Player $player): void
     {
         $resourceId = $player->getResourceId();
         Logger::log('LOBBY', 'Removing Player from lobby.');
-        $hoseAbe = HoseAbe::getInstance();
-        $lobby = $hoseAbe->lobbies[$player->currentLobby];
-        if(isset($hoseAbe->userLobbies[$resourceId])) {
-            unset($hoseAbe->userLobbies[$resourceId]);
-        }
+        $lobby = ConnectionHandler::getPlayerLobby($player);
+        ConnectionHandler::removePlayerLobby($player);
         if(isset($this->members[$resourceId])) {
             unset($this->members[$resourceId]);
         }
 
         if (count($this->members) <= 0) {
             Logger::log('LOBBY', 'Lobby empty, removing lobby.');
-            $this->removeLobby();
+            ConnectionHandler::removeLobby($this);
         } else {
             $lobby->promoteNewOwner();
             $this->sendLobbyUpdate('Player disconnected');
         }
-        Message::send($player->connection, Context::LOBBY, 'Left lobby', []);
+        Message::send($player->connection, Context::LOBBY, 'Left lobby');
     }
 
-    private function promoteNewOwner(): void
+    public function promoteNewOwner(): void
     {
         $newOwner = array_keys($this->members)[0];
         $this->members[$newOwner]->role = MemberRole::OWNER;
-    }
-
-    public static function find($lobbyId): ?Lobby
-    {
-        $hoseAbe = HoseAbe::getInstance();
-        return $hoseAbe->lobbies[$lobbyId];
-    }
-
-    /**
-     * @throws Exception
-     */
-    public static function findByInviteCode(string $inviteCode): ?Lobby
-    {
-        $inviteCode = preg_replace('/[A-Za-z-_\s]/', '', $inviteCode);
-        $hoseAbe = HoseAbe::getInstance();
-
-        if (!isset($hoseAbe->inviteCodes[$inviteCode])) {
-            throw new Exception('Could not find lobby', 404);
-        }
-        $lobbyId = $hoseAbe->inviteCodes[$inviteCode];
-
-        if (!isset($hoseAbe->lobbies[$lobbyId])) {
-            throw new Exception('Could not find lobby', 404);
-        }
-        return $hoseAbe->lobbies[$lobbyId];
     }
 
     public function regenerateNewInviteCode(): void
     {
         $length = array_sum(self::INVITE_CODE_LENGTH);
 
-        $hoseAbe = HoseAbe::getInstance();
-        while(is_null($this->inviteCode) || isset($hoseAbe->inviteCodes[$this->inviteCode])) {
+        while(is_null($this->inviteCode) || ConnectionHandler::checkInviteCodeIsTaken($this->inviteCode)) {
             $this->inviteCode = rand(
                 ((int)str_repeat('9', $length -1) + 1),
                 ((int)str_repeat('9', $length))
@@ -217,14 +187,6 @@ class Lobby
             $code = substr($code,$length);
         }
         return substr($formattedCode, 0, -1);
-    }
-
-    private function removeLobby(): void
-    {
-        $hoseAbe = HoseAbe::getInstance();
-        if(isset($hoseAbe->lobbies[$this->uuid])) {
-            unset($hoseAbe->lobbies[$this->uuid]);
-        }
     }
 
     public function sendLobbyUpdate(string $message, ?LobbyMember $excludeMember = null): void

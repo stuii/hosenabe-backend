@@ -1,6 +1,6 @@
 <?php
 
-namespace HoseAbe;
+namespace HoseAbe\Connection;
 
 use HoseAbe\Enums\Context;
 use HoseAbe\Messages\Error;

@@ -1,6 +1,6 @@
 <?php
 
-use HoseAbe\HoseAbe;
+use HoseAbe\Connection\HoseAbe;
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
 use Ratchet\WebSocket\WsServer;
