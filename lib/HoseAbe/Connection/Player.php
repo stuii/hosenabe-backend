@@ -28,19 +28,23 @@ class Player
         Logger::log('PLAYER', 'Handling player message');
         switch ($message->action) {
             case 'login':
-                $username = $message->data->username;
-                if (ConnectionHandler::checkUsernameIsTaken($username)) {
-                    Error::send($connection, 403, 'Username already exists');
-                    return;
-                }
-
                 try {
                     $player = ConnectionHandler::getPlayer($connection);
                 } catch (Exception $e) {
                     Error::send($connection, $e->getCode(), $e->getMessage());
                     return;
                 }
-                $player->username = $username;
+
+                $newUsername = $message->data->username;
+                if (ConnectionHandler::checkUsernameIsTaken($newUsername)) {
+                    Error::send($connection, 403, 'Username already exists');
+                    return;
+                }
+
+                if (!is_null($player->username)) {
+                    ConnectionHandler::removeUsername($player);
+                }
+                $player->username = $newUsername;
                 ConnectionHandler::addPlayer($player);
                 ConnectionHandler::addUsername($player);
 

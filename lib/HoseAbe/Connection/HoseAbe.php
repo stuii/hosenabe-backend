@@ -10,25 +10,6 @@ use Ratchet\MessageComponentInterface;
 
 class HoseAbe implements MessageComponentInterface
 {
-    protected static ?HoseAbe $instance = null;
-
-    protected function __construct()
-    {
-    }
-
-    protected function __clone()
-    {
-    }
-
-    public static function getInstance(): HoseAbe
-    {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
-
-        return self::$instance;
-    }
-
     public function onOpen(ConnectionInterface $conn)
     {
         Logger::log('CONNECT', 'New Connection');
@@ -64,13 +45,7 @@ class HoseAbe implements MessageComponentInterface
 
     public function onError(ConnectionInterface $conn, Exception $e)
     {
-        // TODO: Implement onError() method.
-    }
-
-    public function addLobby(Lobby $lobby)
-    {
-        Logger::log('LOBBY', 'Adding Lobby ('.$lobby->name.') to storage');
-        $this->lobbies[$lobby->uuid] = $lobby;
-        $this->inviteCodes[$lobby->inviteCode] = $lobby->uuid;
+        $lobby->sendLobbyUpdate('An error occurred');
+        Error::send($conn, $e->getCode(), $e->getMessage());
     }
 }

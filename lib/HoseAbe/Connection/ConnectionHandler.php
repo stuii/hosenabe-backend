@@ -52,7 +52,7 @@ class ConnectionHandler
     {
         Logger::log('PLAYER', 'Adding Player ('.$player->getResourceId().') to storage');
 
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         $handler->players[$player->getResourceId()] = $player;
     }
 
@@ -60,7 +60,7 @@ class ConnectionHandler
     {
         Logger::log('PLAYER', 'Removing Player ('.$player->getResourceId().') from storage');
 
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         if (isset($handler->clients[$player->getResourceId()])) {
             unset($handler->clients[$player->getResourceId()]);
         }
@@ -83,7 +83,7 @@ class ConnectionHandler
      */
     public static function getPlayerByResourceId($resourceId): Player
     {
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         if (!isset($handler->players[$resourceId])) {
             throw new Exception();
         }
@@ -94,7 +94,7 @@ class ConnectionHandler
     {
         Logger::log('LOBBY', 'Adding PlayerLobby ('.$player->username.') to storage');
 
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         $handler->userLobbies[$player->getResourceId()] = $lobby->uuid;
     }
 
@@ -103,7 +103,7 @@ class ConnectionHandler
      */
     public static function getPlayerLobby(Player $player): Lobby
     {
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         if (!isset($handler->userLobbies[$player->getResourceId()])) {
             throw new Exception();
         }
@@ -116,7 +116,7 @@ class ConnectionHandler
     {
         Logger::log('LOBBY', 'Removing PlayerLobby ('.$player->username.') from storage');
 
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         if(isset($handler->userLobbies[$player->getResourceId()])) {
             unset($handler->userLobbies[$player->getResourceId()]);
         }
@@ -126,13 +126,23 @@ class ConnectionHandler
     {
         Logger::log('PLAYER', 'Adding Username ('.$player->username.') to storage');
 
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         $handler->usernames[$player->username] = $player->getResourceId();
+    }
+
+    public static function removeUsername(Player $player): void
+    {
+        Logger::log('PLAYER', 'Removing Username ('.$player->username.') from storage');
+
+        $handler = self::getInstance();
+        if (isset($handler->usernames[$player->username])) {
+            unset($handler->usernames[$player->username]);
+        }
     }
 
     public static function checkUsernameIsTaken(string $username): bool
     {
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         return isset($handler->usernames[$username]);
     }
 
@@ -140,7 +150,7 @@ class ConnectionHandler
     {
         Logger::log('LOBBY', 'Adding Lobby ('.$lobby->name.') to storage');
 
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         $handler->lobbies[$lobby->uuid] = $lobby;
         $handler->inviteCodes[$lobby->inviteCode] = $lobby->uuid;
     }
@@ -149,7 +159,7 @@ class ConnectionHandler
     {
         Logger::log('LOBBY', 'Removing Lobby ('.$lobby->name.') from storage');
 
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         if (isset($handler->lobbies[$lobby->uuid])) {
             unset($handler->lobbies[$lobby->uuid]);
         }
@@ -164,7 +174,7 @@ class ConnectionHandler
      */
     public static function getLobby(string $lobbyId): Lobby
     {
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         if (!isset($handler->lobbies[$lobbyId])) {
             throw new Exception();
         }
@@ -173,7 +183,7 @@ class ConnectionHandler
 
     public static function checkLobbyUuidIsTaken(?string $uuid): bool
     {
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         if (is_null($uuid)) { return true; }
         return isset($handler->lobbies[$uuid]);
     }
@@ -184,7 +194,7 @@ class ConnectionHandler
     public static function getLobbyByCode(string $inviteCode): ?Lobby
     {
         $inviteCode = preg_replace('/[A-Za-z-_\s]/', '', $inviteCode);
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
 
         if (!isset($handler->inviteCodes[$inviteCode])) {
             throw new Exception('Could not find lobby', 404);
@@ -199,7 +209,7 @@ class ConnectionHandler
 
     public static function checkInviteCodeIsTaken(?int $inviteCode): bool
     {
-        $handler = ConnectionHandler::getInstance();
+        $handler = self::getInstance();
         return isset($handler->inviteCodes[$inviteCode]);
     }
 }
