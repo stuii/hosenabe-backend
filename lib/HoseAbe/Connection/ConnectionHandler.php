@@ -32,6 +32,7 @@ class ConnectionHandler
 
     /** @var array<string, string> $usernames */
     public array $usernames = [];
+    public array $reconnectionTokens = [];
 
     /** @noinspection PhpUnused */
     protected function __construct() {}
@@ -85,7 +86,7 @@ class ConnectionHandler
     {
         $handler = self::getInstance();
         if (!isset($handler->players[$resourceId])) {
-            throw new Exception();
+            throw new Exception('No player found for ResourceID', 404);
         }
         return $handler->players[$resourceId];
     }
@@ -144,6 +145,55 @@ class ConnectionHandler
     {
         $handler = self::getInstance();
         return isset($handler->usernames[$username]);
+    }
+
+    public static function addReconnectionToken(Player $player): void
+    {
+        Logger::log('PLAYER', 'Adding RT to storage');
+
+        $handler = self::getInstance();
+        $handler->reconnectionTokens[$player->reconnectionToken] = $player->getResourceId();
+    }
+
+    public static function removeReconnectionToken(string $token): void
+    {
+        Logger::log('PLAYER', 'Removing RT from storage');
+
+        $handler = self::getInstance();
+        if (isset($handler->reconnectionTokens[$token])) {
+            unset($handler->reconnectionTokens[$token]);
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    public static function getPlayerByReconnectionToken(ConnectionInterface $connection, string $token): Player
+    {
+        Logger::log('PLAYER', 'Reconnecting user');
+
+        $handler = self::getInstance();
+        if (!isset($handler->reconnectionTokens[$token])) {
+            throw new Exception('Reconnection Token does not exist', 404);
+        }
+
+        $resourceId = $handler->reconnectionTokens[$token];
+        $player = ConnectionHandler::getPlayerByResourceId($resourceId);
+        $player->connection = $connection;
+
+        $handler->players[$player->getResourceId()] = $player;
+        if (isset($handler->userLobbies[$resourceId])) {
+            $handler->userLobbies[$player->getResourceId()] = $handler->userLobbies[$resourceId];
+        }
+        $handler->reconnectionTokens[$token] = $player->getResourceId();
+        unset($handler->players[$resourceId]);
+        unset($handler->userLobbies[$resourceId]);
+
+        if (isset($handler->userLobbies[$resourceId])) {
+            $lobby = $handler->lobbies[$handler->userLobbies[$player->getResourceId()]];
+            $lobby->members[$player->getResourceId()]->player = $player;
+        }
+        return $player;
     }
 
     public static function addLobby(Lobby $lobby): void

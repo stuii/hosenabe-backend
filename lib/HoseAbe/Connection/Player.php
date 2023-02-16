@@ -5,9 +5,11 @@ namespace HoseAbe\Connection;
 
 use Exception;
 use HoseAbe\Debug\Logger;
+use HoseAbe\Enums\Action;
 use HoseAbe\Enums\Context;
 use HoseAbe\Messages\Error;
 use HoseAbe\Messages\Message;
+use HoseAbe\Resources\RandomString;
 use JetBrains\PhpStorm\ArrayShape;
 use Ratchet\ConnectionInterface;
 use stdClass;
@@ -16,12 +18,14 @@ class Player
 {
     public ?string $username = null;
     public ?string $currentLobby = null;
+    public string $reconnectionToken;
 
     /** @noinspection PhpUnused */
     public function __construct(
         public ConnectionInterface $connection
     )
     {
+        $this->reconnectionToken = RandomString::generate(100);
     }
     public static function handleMessage(ConnectionInterface $connection, stdClass $message): void
     {
@@ -47,8 +51,24 @@ class Player
                 $player->username = $newUsername;
                 ConnectionHandler::addPlayer($player);
                 ConnectionHandler::addUsername($player);
+                ConnectionHandler::addReconnectionToken($player);
 
-                Message::send($connection, Context::PLAYER, 'Username set', $player->render());
+                Message::send($connection, Context::PLAYER, Action::LOGIN, 'Username set', $player->render());
+                break;
+            case 'reconnect':
+                try {
+                    $player = ConnectionHandler::getPlayerByReconnectionToken($connection, $message->data->reconnectToken);
+                } catch (Exception $e) {
+                    Error::send($connection, $e->getCode(), $e->getMessage());
+                    return;
+                }
+
+                Message::send($connection, Context::PLAYER, Action::RECONNECT, 'Reconnected successfully');
+                try {
+                    $lobby = ConnectionHandler::getPlayerLobby($player);
+                    Message::send($connection, Context::LOBBY,Action::LOBBY_UPDATE,  'Lobby rejoined', ['lobby' => $lobby->render()]);
+                } catch(Exception) {}
+
                 break;
             default:
                 Error::send($connection, 404, 'Action does not exist');
@@ -58,7 +78,7 @@ class Player
 
     public function sendWelcomeMessage(): void
     {
-        Message::send($this->connection, Context::PLAYER, 'Welcome', []);
+        Message::send($this->connection, Context::PLAYER, Action::CONNECT, 'Welcome', []);
     }
 
     /**
@@ -113,11 +133,12 @@ class Player
         ConnectionHandler::setPlayerLobby($this, $lobby);
     }
 
-    #[ArrayShape(['username' => "null|string"])]
+    #[ArrayShape(['username' => "string", 'reconnectionToken' => "string"])]
     public function render(): array
     {
         return [
-            'username' => $this->username
+            'username' => $this->username,
+            'reconnectionToken' => $this->reconnectionToken
         ];
     }
 

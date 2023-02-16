@@ -4,6 +4,7 @@ namespace HoseAbe\Connection;
 
 use Exception;
 use HoseAbe\Debug\Logger;
+use HoseAbe\Enums\Action;
 use HoseAbe\Enums\Context;
 use HoseAbe\Enums\LobbyStatus;
 use HoseAbe\Enums\MemberRole;
@@ -16,7 +17,7 @@ use stdClass;
 
 class Lobby
 {
-    public const INVITE_CODE_LENGTH = [2,2];
+    public const INVITE_CODE_LENGTH = [3,3];
 
     public ?string $uuid = null;
     /** @var array<LobbyMember> $members  */
@@ -45,7 +46,7 @@ class Lobby
             throw new Exception('Cannot create lobby without username', 403);
         }
         $this->name = $data->name;
-        $this->maxMembers = $data->members;
+        //$this->maxMembers = $data->members;
         $this->addMember($owner, MemberRole::OWNER);
     }
 
@@ -67,8 +68,7 @@ class Lobby
                 }
                 ConnectionHandler::addLobby($lobby);
 
-                Message::send($connection, Context::LOBBY, 'Successfully created Lobby', ['lobby' => $lobby->render()]);
-                //todo: return lobby data
+                Message::send($connection, Context::LOBBY, Action::LOBBY_UPDATE, 'Successfully created Lobby', ['lobby' => $lobby->render()]);
                 break;
             case 'join':
                 Logger::log('LOBBY', 'Player wants to join lobby by invite code ('.$message->data->invite.')');
@@ -83,7 +83,7 @@ class Lobby
 
                 $lobby->sendLobbyUpdate('New Player joined', $lobbyMember);
 
-                Message::send($connection, Context::LOBBY, 'Successfully created Lobby', ['lobby' => $lobby->render()]);
+                Message::send($connection, Context::LOBBY, Action::LOBBY_UPDATE, 'Successfully created Lobby', ['lobby' => $lobby->render()]);
                 break;
             case 'leave':
                 Logger::log('LOBBY', 'Player left lobby');
@@ -138,7 +138,7 @@ class Lobby
             $lobby->promoteNewOwner();
             $this->sendLobbyUpdate('Player disconnected');
         }
-        Message::send($player->connection, Context::LOBBY, 'Left lobby');
+        Message::send($player->connection, Context::LOBBY, Action::LEAVE_LOBBY, 'Left lobby');
     }
 
     public function promoteNewOwner(): void
@@ -199,6 +199,7 @@ class Lobby
             Message::send(
                 $member->player->connection,
                 Context::LOBBY,
+                Action::LOBBY_UPDATE,
                 $message,
                 ['lobby' => $this->render()]
             );

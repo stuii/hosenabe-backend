@@ -11,10 +11,9 @@ class Error
         $connection->send(
             json_encode(
                 [
-                    'error' => [
-                        'message' => $message,
-                        'code' => $code,
-                    ]
+                    'status' => 'error',
+                    'message' => $message,
+                    'code' => $code,
                 ]
             )
         );
